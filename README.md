@@ -2,9 +2,17 @@
 
 An MCP server that lets an AI agent drive your real Chrome browser, with security policies that limit what the agent can do.
 
-webtool connects to the Chrome you already use, with your logins and cookies, over the Chrome DevTools Protocol (CDP). The agent gets one MCP tool, `webtool`, that opens tabs, reads pages as compact text snapshots, clicks, fills forms, types, and runs JavaScript. A YAML policy file blocks network requests and actions you don't want an agent to make, enforced inside Chrome, below anything the agent or the page can change.
+webtool connects to the Chrome you already use, with your logins and cookies, over the Chrome DevTools Protocol (CDP). The agent gets one MCP tool, `webtool`, that opens tabs, reads pages as compact text snapshots, clicks, fills forms, types, and runs JavaScript. You watch it work in your own browser window.
 
-It is a single Go binary. No Node.js, no Playwright, no browser download.
+Giving an agent your logged-in browser is useful and risky. It can send the email, delete the repository, or place the order, either by mistake or because a web page it read told it to (prompt injection). Instructions in a prompt don't reliably prevent that, because the same model that reads the instructions also reads the hostile page.
+
+webtool's answer is a policy file you write ahead of time. Policies are enforced in code, outside the model, so the agent cannot be talked out of them:
+
+- **Network rules** check every HTTP request a controlled tab makes, inside Chrome, before it leaves the browser. Block all writes (`POST`, `PUT`, `DELETE`), keep the agent on an allow list of sites, or block specific API calls by host, path, query, header, or request body. Requests made by page scripts and by JavaScript the agent runs are checked too.
+- **Action rules** turn off tool actions entirely, such as running JavaScript or uploading local files.
+- **Hot reload.** Edit the policy file and the change applies to the running session, including tabs that are already open.
+
+webtool is a single Go binary. No Node.js, no Playwright, no browser download.
 
 ## Install
 
@@ -72,30 +80,6 @@ These choose which browser `webtool mcp` connects to. Set them in your MCP clien
 | `WEBTOOL_CHROME_DATA_DIR` | OS default Chrome profile | Chrome user data directory where webtool looks for `DevToolsActivePort`. Ignored when `WEBTOOL_CDP_URL` is set. |
 
 Claude Code takes them with `-e`, for example `claude mcp add webtool -e WEBTOOL_CDP_URL=wss://... -- webtool mcp`. Codex takes `--env KEY=VALUE`, or an `env = { ... }` table in `config.toml`.
-
-## The webtool tool
-
-The agent sends one JSON call per tool use. A call holds tab groups; each group targets one tab (an existing tab id, or `"new"`), runs its actions in order, and returns the page's end state in the format it asks for. Groups in one call run in parallel.
-
-```json
-{
-  "tabs": [
-    {
-      "tab": "new",
-      "output": "snapshot",
-      "actions": [
-        {"reason": "open the docs", "action": "open", "url": "https://example.com"}
-      ]
-    }
-  ]
-}
-```
-
-- **Actions:** `open`, `close`, `back`, `forward`, `reload`, `click`, `hover`, `fill`, `select`, `type`, `scroll`, `upload`, `eval` (run a JavaScript expression in the page), `screenshot`. A top-level `"browser"` array takes `list`, which lists open tabs.
-- **Outputs:** `snapshot` (interactive elements with ids to act on), `markdown` (page content), `html`, or `none`, with optional filters to return only part of the page.
-- **`reason`:** every action carries a one-sentence reason for why the agent is taking it.
-
-The full schema is in [mcp/tool_schema.json](mcp/tool_schema.json); clients show it to the model.
 
 ## Security policies
 

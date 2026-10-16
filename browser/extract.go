@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
 	"github.com/machinae/safewebtool/internal/rod/lib/proto"
+	"golang.org/x/net/html"
 )
 
 // Extract returns page content as markdown or HTML. f scopes and filters
@@ -138,9 +141,20 @@ func (t *Tab) collectKeptHTML(
 	return strings.Join(parts, "\n"), nil
 }
 
-// toMarkdown converts an HTML fragment to markdown.
-func toMarkdown(html string) (string, error) {
-	md, err := htmltomarkdown.ConvertString(html)
+// toMarkdown converts an HTML fragment to markdown. Images with a data: URL
+// are dropped: their base64 payload is useless to the model and can run to
+// many kilobytes.
+func toMarkdown(htmlInput string) (string, error) {
+	conv := converter.NewConverter(converter.WithPlugins(base.NewBasePlugin(), commonmark.NewCommonmarkPlugin()))
+	conv.Register.RendererFor("img", converter.TagTypeInline, func(ctx converter.Context, w converter.Writer, n *html.Node) converter.RenderStatus {
+		for _, a := range n.Attr {
+			if a.Key == "src" && strings.HasPrefix(strings.TrimSpace(a.Val), "data:") {
+				return converter.RenderSuccess
+			}
+		}
+		return converter.RenderTryNext
+	}, converter.PriorityEarly)
+	md, err := conv.ConvertString(htmlInput)
 	if err != nil {
 		return "", fmt.Errorf("converting HTML to markdown: %w", err)
 	}

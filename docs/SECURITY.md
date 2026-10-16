@@ -93,7 +93,7 @@ The URL is parsed first and each field is matched against its own component. A t
 A blocked request makes the action that triggered it fail. The action's result slot carries an error like:
 
 ```json
-{"kind": "blocked", "message": "request blocked by policy: POST https://api.example.com/sync (rule: host=*api.example.com path=/sync body=delete|archive)", "method": "POST", "url": "https://api.example.com/sync", "rule": "host=*api.example.com path=/sync body=delete|archive"}
+{"action": "click", "target": "571f3aa", "error": "request blocked by policy: POST https://httpbin.org/post (rule: method=POST|PUT|PATCH|DELETE)"}
 ```
 
 - **Any block while an action runs fails that action**, even if the action's main work succeeded. If `open` loads a page and the page requests a blocked tracker, `open` reports the block.

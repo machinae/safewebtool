@@ -18,6 +18,19 @@ func TestToMarkdownMixedContent(t *testing.T) {
 	}
 }
 
+func TestToMarkdownDropsDataImages(t *testing.T) {
+	md, err := toMarkdown(`<p>Logo <img src="data:image/png;base64,iVBORw0KGgo" alt="x"> <img src="https://example.com/a.png" alt="photo"></p>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(md, "data:") {
+		t.Errorf("data: image not dropped: %q", md)
+	}
+	if !strings.Contains(md, "![photo](https://example.com/a.png)") {
+		t.Errorf("expected regular image kept, got %q", md)
+	}
+}
+
 func TestToMarkdownEmptyInput(t *testing.T) {
 	md, err := toMarkdown("")
 	if err != nil {
