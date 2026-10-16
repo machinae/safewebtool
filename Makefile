@@ -1,0 +1,13 @@
+.PHONY: build test test-integration clean
+
+build:
+	go build -o dist/webtool ./cmd/webtool
+
+test:
+	go test ./...
+
+test-integration:
+	go test -tags integration ./test/integration/ -v -count=1
+
+clean:
+	rm -rf dist/webtool

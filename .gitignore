@@ -1,0 +1,13 @@
+.DS_Store
+
+CLAUDE.md
+
+# Builds
+dist/
+
+#Temporary test data
+testdata/
+
+# Go work
+go.work
+go.work.sum

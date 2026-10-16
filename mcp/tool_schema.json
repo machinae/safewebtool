@@ -1,0 +1,177 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 1,
+  "properties": {
+    "tabs": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Groups of actions, each bound to one tab. Actions in a group run in order on its tab; groups run in parallel. A tab id may appear in at most one group per call.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tab",
+          "output"
+        ],
+        "properties": {
+          "tab": {
+            "type": "string",
+            "description": "A 7-char hex tab id from list, or \"new\" to create a tab (a \"new\" group's first action must be open)"
+          },
+          "output": {
+            "type": "string",
+            "enum": [
+              "snapshot",
+              "markdown",
+              "html",
+              "none"
+            ],
+            "description": "What the group returns about the page's end state: snapshot when you need element ids to act next; markdown to read page content; html only when markdown drops structure you need; none for no page output (e.g. after close). A snapshot is indented lines of [id] role \"name\" followed by any value and state the element carries:\n  [a3f81c2] heading[2] \"Pricing\"\n  [9c04e1d] textbox \"Email\" value=\"ada@example.com\" required\n  [d7e02f3] checkbox \"Remember me\" checked\n  [5b29c44] combobox \"Country\" value=\"United States\" collapsed\n  [20fa7b8] link \"Docs\" url=\"/docs\"\nState flags that may appear: checked, pressed, disabled, readonly, required, selected, invalid, focused, expanded, collapsed. A heading shows its level as heading[N], and a collapsed control hides its options until you click it. To read only part of a page instead of the whole thing, use the filter fields below (section, includeAXScope, excludeAXScope, includeElementIds, match)."
+          },
+          "includeElementIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional. Return only the subtrees rooted at these element ids, instead of the whole page. Each is an element id from a snapshot (not a tab id), e.g. \"a3f81c2\". Combines with includeAXScope. A stale id errors so you re-snapshot and retry"
+          },
+          "includeAXScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional. Return only the page regions matching these accessibility selectors, dropping everything else. Each selector is an ARIA role or role:name, e.g. \"main\", \"navigation\", \"region:About\". A selector that matches nothing is ignored"
+          },
+          "excludeAXScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional. Drop the page regions matching these accessibility selectors, removed from whatever the includes kept. Same selector grammar as includeAXScope, e.g. [\"navigation\", \"banner\", \"contentinfo\"] to strip site chrome"
+          },
+          "match": {
+            "type": "string",
+            "description": "Optional. Keep only output lines matching this regular expression (Go regexp, case-sensitive). Applied last, after any scope or section. Use it to grep a page down to the lines you need"
+          },
+          "section": {
+            "type": "string",
+            "description": "Optional. Return just one section of the page: the heading whose text matches this (case-insensitive, trimmed), and everything under it through the next heading of the same or higher level, or the page end. The heading itself is included. Use it to read a single section (e.g. \"Experience\" on a profile, \"History\" on an article) without the rest of the page. Works with snapshot or markdown output, not html. A name matching no heading errors with the list of headings present, so you can fix it and retry"
+          },
+          "actions": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The actions to run in order on this tab; omit to just read the page via output",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reason",
+                "action"
+              ],
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "description": "Why, one short sentence; not what. Written verbatim to the audit log; redact secrets and PII"
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "close",
+                    "back",
+                    "forward",
+                    "reload",
+                    "click",
+                    "hover",
+                    "fill",
+                    "select",
+                    "type",
+                    "scroll",
+                    "upload",
+                    "eval",
+                    "screenshot"
+                  ],
+                  "description": "The verb. Each field below names the actions that use it; close, back, forward, and reload take no extra fields. fill sets a form element's value; type sends real keystrokes to whatever has focus: canvas-rendered editors (docs, spreadsheets, design tools) ignore fill, so focus the editor, then write and send shortcuts with type"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "open only. Required for open. The URL to navigate to"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Required for click, hover, fill, select, upload. Optional for screenshot (one element). An element id copied exactly from a snapshot (not a CSS selector or visible text), e.g. \"a3f81c2\"; an element inside an iframe has a longer dotted id like \"a3f81c2.def5678\""
+                },
+                "text": {
+                  "type": "string",
+                  "description": "fill or type. For fill: the text to enter; replaces the input's existing content, and empty text clears the field (on contenteditable elements it inserts at the cursor instead). For type (exactly one of key or text): the string to send as real per-character keystrokes to the focused element, for editors that handle keyboard events themselves and ignore fill; US-layout characters only"
+                },
+                "option": {
+                  "type": "string",
+                  "description": "select only. Required for select. The visible text of the option to pick"
+                },
+                "key": {
+                  "type": "string",
+                  "description": "type only; exactly one of key or text. The key to press, sent as real keyDown/keyUp to the focused element: a key name like \"Enter\", \"Escape\", \"ArrowDown\", \"F5\"; a single character like \"a\" or \"#\"; or a \"+\"-chord holding modifiers Control (Ctrl), Shift, Alt, Meta (Cmd), like \"Control+A\" or \"Shift+ArrowRight\". Names are case-insensitive. In-app shortcuts and selection (Shift+Arrow) work through chords"
+                },
+                "pixels": {
+                  "type": "integer",
+                  "description": "scroll only. Optional. Signed distance; negative scrolls up; omit for one viewport down"
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "upload only. Required for upload. File paths to set on the <input type=\"file\">"
+                },
+                "js": {
+                  "type": "string",
+                  "description": "eval only. Required for eval. JavaScript expression, not statements; wrap multi-statement code in an IIFE"
+                },
+                "path": {
+                  "type": "string",
+                  "description": "screenshot only. Optional. Save the JPEG here; must end .jpg or .jpeg; omit to return the image inline"
+                },
+                "full": {
+                  "type": "boolean",
+                  "description": "screenshot only. Optional. Capture the whole scrollable page, capped at 12000px; mutually exclusive with id"
+                },
+                "maxHeight": {
+                  "type": "integer",
+                  "description": "screenshot only. Optional. Raise the full-page height cap; only with full"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "browser": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Browser-scoped actions; they run after all tab groups complete",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason",
+          "action"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Why, one short sentence; not what. Written verbatim to the audit log; redact secrets and PII"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "list"
+            ],
+            "description": "list: the open-tab roster (tab, title, url for each)"
+          }
+        }
+      }
+    }
+  }
+}
